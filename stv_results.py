@@ -2,7 +2,7 @@
 
 import csv
 import re
-
+import copy 
 # This is the fraction of votes a choice has to get to
 # be declared a winner. 
 CUTOFF = 0.5
@@ -21,9 +21,9 @@ preferences = []; # will store everyone's preferences
 with open('votes.csv', 'rb') as csvfile:
     csvreader = csv.reader(csvfile)
     header = csvreader.next()
-    names = [re.search("\[.*", h).group(0) for h in header[1::]]  # grabs the choice names from the header row (starts at 1 b/c of timestamp)
+    original_names = [re.search("\[.*", h).group(0) for h in header[1::]]  # grabs the choice names from the header row (starts at 1 b/c of timestamp)
     for index, row in enumerate(csvreader):
-        preferences.append(OrderChoices(tuple(row[1::]), names))
+        preferences.append(OrderChoices(tuple(row[1::]), original_names))
 
 def GetVotingOutcome(preferences):
     "From the collection of preferences, tallys votes by name"
@@ -42,11 +42,17 @@ def FracTopVoteGetter(voting_outcomes):
     fractions = [v / votes_cast for v in voting_outcomes.values()]
     return max(fractions)
 
-def WorstPerformingName(voting_outcomes):
+def WorstPerformingName(voting_outcomes, names):
+    d = {}
     "Gets the worst-performing name. In case of ties, take first one in list."
-    fewest_votes = min(voting_outcomes.values())
-    for name in voting_outcomes.keys():
-        if voting_outcomes[name] == fewest_votes:
+    for name in names: # add back the 0s
+        if name not in voting_outcomes.keys():
+            d[name] = 0
+        else:
+            d[name] = voting_outcomes[name]
+    fewest_votes = min(d.values())
+    for name in d.keys():
+        if d[name] == fewest_votes:
             break
     return name
 
@@ -64,6 +70,7 @@ def RemoveName(preference, name_to_remove):
     for p in preference:
         if p[1] == name_to_remove:
             pass
+
         else:
             new_preference.append(p)
     return new_preference 
@@ -72,16 +79,28 @@ def PurgePreferences(preferences, name_to_remove):
     "Returns a new list of preferences w/ name_to_remove purged from all preferences"
     return [RemoveName(p, name_to_remove) for p in preferences]    
 
-def PrintPreferences(voting_outcomes):
+def PrintPreferences(voting_outcomes, original_names, names):
     "Print in vote-order those options getting non-zero number of votes"
     results = []
-    for name in voting_outcomes.keys():
-        results.append((voting_outcomes[name], name))
+    for name in original_names: 
+        if name in voting_outcomes.keys():
+            results.append((voting_outcomes[name], name))
+        else:
+            if name in names:
+                results.append((0, name))
+            else:
+                results.append((-1, name))            
     results.sort(reverse = True)
+    break_printed = False 
     for r in results:
+        if r[0] < 0 and not break_printed:
+            break_printed = True
+            print "-----------removed---------------"
         print "Votes: %s" % r[0] + " Name: %s" % r[1]
 
-new_preferences = preferences
+new_preferences = copy.deepcopy(preferences)
+names = copy.deepcopy(original_names)
+
 round = 0
 while True:
     round += 1 
@@ -92,7 +111,7 @@ while True:
     print "################################################"
     
     voting_outcomes = GetVotingOutcome(new_preferences)
-    PrintPreferences(voting_outcomes)
+    PrintPreferences(voting_outcomes, original_names, names)
     frac_going_to_top = FracTopVoteGetter(voting_outcomes)
     print ""
     print "Fraction of vote going to top-voting name %s" % frac_going_to_top
@@ -100,8 +119,8 @@ while True:
         print "Habemus Papam! Our new name is: %s" % BestPerformingName(voting_outcomes)
         break 
     else:
-        worst_name = WorstPerformingName(voting_outcomes)
+        worst_name = WorstPerformingName(voting_outcomes, names)
         print "We need top vote-getter to have %s of the vote." % CUTOFF
         print "We're dropping from consideration: %s" % worst_name
-
-    new_preferences = PurgePreferences(new_preferences, worst_name)
+        new_preferences = PurgePreferences(new_preferences, worst_name)
+        names.remove(worst_name)
