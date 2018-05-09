@@ -36,12 +36,13 @@ def GetVotingOutcome(preferences):
     return votes 
 
 def FracTopVoteGetter(voting_outcomes):
+    "Gets the fraction of the vote going to the top vote-getter"
     votes_cast = 1.0 * sum(voting_outcomes.values())
     fractions = [v / votes_cast for v in voting_outcomes.values()]
     return max(fractions)
 
-
 def WorstPerformingName(voting_outcomes):
+    "Gets the worst-performing name. In case of ties, take first one in list."
     fewest_votes = min(voting_outcomes.values())
     for name in voting_outcomes.keys():
         if voting_outcomes[name] == fewest_votes:
@@ -49,6 +50,7 @@ def WorstPerformingName(voting_outcomes):
     return name
 
 def BestPerformingName(voting_outcomes):
+    "Gets the best performing name"
     most_votes = max(voting_outcomes.values())
     for name in voting_outcomes.keys():
         if voting_outcomes[name] == most_votes:
@@ -56,6 +58,7 @@ def BestPerformingName(voting_outcomes):
     return name
 
 def RemoveName(preference, name_to_remove):
+    "Takes an individual's ordered list of preferences and removes choices no longer available"
     new_preference = []
     for p in preference:
         if p[1] == name_to_remove:
@@ -65,10 +68,11 @@ def RemoveName(preference, name_to_remove):
     return new_preference 
 
 def PurgePreferences(preferences, name_to_remove):
+    "Returns a new list of preferences w/ name_to_remove purged from all preferences"
     return [RemoveName(p, name_to_remove) for p in preferences]    
 
-
 def PrintPreferences(voting_outcomes):
+    "Print in vote-order those options getting non-zero number of votes"
     results = []
     for name in voting_outcomes.keys():
         results.append((voting_outcomes[name], name))
@@ -99,4 +103,4 @@ while True:
         print "We need top vote-getter to have %s of the vote." % CUTOFF
         print "We're dropping from consideration: %s" % worst_name
 
-        new_preferences = PurgePreferences(new_preferences, worst_name)
+    new_preferences = PurgePreferences(new_preferences, worst_name)
