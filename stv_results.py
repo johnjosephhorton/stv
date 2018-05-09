@@ -3,8 +3,9 @@
 import csv
 import re
 
+# This is the fraction of votes a choice has to get to
+# be declared a winner. 
 CUTOFF = 0.5
-
 
 def OrderChoices(ordering, names):
     "Creates a list for each respondent, with choices ordered 1 = most-preferred"
