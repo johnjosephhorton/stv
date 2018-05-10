@@ -3,9 +3,6 @@
 import csv
 import re
 import copy 
-# This is the fraction of votes a choice has to get to
-# be declared a winner. 
-CUTOFF = 0.5
 
 def OrderChoices(ordering, names):
     "Creates a list for each respondent, with choices ordered 1 = most-preferred"
@@ -15,15 +12,29 @@ def OrderChoices(ordering, names):
         choices.sort()
     return choices
 
-# reads in the data from a CSV file. Structure is timestamp, then the rank ordering e.g., 
-# ['2018/05/09 10:55:53 AM AST', '7', '2', '1', '9', '4', '3', '5', '6', '8']
-preferences = []; # will store everyone's preferences 
-with open('votes.csv', 'rb') as csvfile:
-    csvreader = csv.reader(csvfile)
-    header = csvreader.next()
-    original_names = [re.search("\[.*", h).group(0) for h in header[1::]]  # grabs the choice names from the header row (starts at 1 b/c of timestamp)
-    for index, row in enumerate(csvreader):
-        preferences.append(OrderChoices(tuple(row[1::]), original_names))
+def SimulateChoiceData(num_options, num_voters):
+    "Used to simulate preference data" 
+    preferences = []
+    for voter in range(num_voters):
+        choices = range(num_options)
+        random.shuffle(choices)
+        combo = zip(choices, range(num_options))
+        combo.sort()
+        preferences.append(combo)
+    return preferences 
+
+def ActualChoiceData(file_name):
+    "Returns a list of all preferences as well as the names of all the choices."
+    # reads in the data from a CSV file. Structure is timestamp, then the rank ordering e.g., 
+    # ['2018/05/09 10:55:53 AM AST', '7', '2', '1', '9', '4', '3', '5', '6', '8']
+    preferences = []; # will store everyone's preferences 
+    with open(file_name, 'rb') as csvfile:
+        csvreader = csv.reader(csvfile)
+        header = csvreader.next()
+        original_names = [re.search("\[.*", h).group(0) for h in header[1::]]  # grabs the choice names from the header row (starts at 1 b/c of timestamp)
+        for index, row in enumerate(csvreader):
+            preferences.append(OrderChoices(tuple(row[1::]), original_names))
+    return {'preferences':preferences, 'original_names':original_names}
 
 def GetVotingOutcome(preferences):
     "From the collection of preferences, tallys votes by name"
@@ -98,29 +109,41 @@ def PrintPreferences(voting_outcomes, original_names, names):
             print "-----------removed---------------"
         print "Votes: %s" % r[0] + " Name: %s" % r[1]
 
-new_preferences = copy.deepcopy(preferences)
-names = copy.deepcopy(original_names)
 
-round = 0
-while True:
-    round += 1 
-    print ""
-    print "" 
-    print "################################################"
-    print "##                Round %s                    ##" % round
-    print "################################################"
-    
-    voting_outcomes = GetVotingOutcome(new_preferences)
-    PrintPreferences(voting_outcomes, original_names, names)
-    frac_going_to_top = FracTopVoteGetter(voting_outcomes)
-    print ""
-    print "Fraction of vote going to top-voting name %s" % frac_going_to_top
-    if frac_going_to_top > CUTOFF:
-        print "Habemus Papam! Our new name is: %s" % BestPerformingName(voting_outcomes)
-        break 
-    else:
-        worst_name = WorstPerformingName(voting_outcomes, names)
-        print "We need top vote-getter to have %s of the vote." % CUTOFF
-        print "We're dropping from consideration: %s" % worst_name
-        new_preferences = PurgePreferences(new_preferences, worst_name)
-        names.remove(worst_name)
+def FindWinner(preferences, original_names, cutoff): 
+    new_preferences = copy.deepcopy(preferences)
+    names = copy.deepcopy(original_names)
+    round = 0
+    while True:
+        round += 1 
+        print ""
+        print "" 
+        print "################################################"
+        print "##                Round %s                    ##" % round
+        print "################################################"
+        
+        voting_outcomes = GetVotingOutcome(new_preferences)
+        PrintPreferences(voting_outcomes, original_names, names)
+        frac_going_to_top = FracTopVoteGetter(voting_outcomes)
+        print ""
+        print "Fraction of vote going to top-voting name %s" % frac_going_to_top
+        if frac_going_to_top > cutoff:
+            print "Habemus Papam! Our new name is: %s" % BestPerformingName(voting_outcomes)
+            break 
+        else:
+            worst_name = WorstPerformingName(voting_outcomes, names)
+            print "We need top vote-getter to have %s of the vote." % CUTOFF
+            print "We're dropping from consideration: %s" % worst_name
+            new_preferences = PurgePreferences(new_preferences, worst_name)
+            names.remove(worst_name)
+
+# Actual results 
+voting_results = ActualChoiceData("faculty_vote_results.csv")
+FindWinner(voting_results['preferences'], voting_results['original_names'], 0.5)
+
+# Simulated results 
+num_choices = 5
+num_voters = 30
+preferences = SimulateChoiceData(num_choices, num_voters)
+choice_names = range(num_choices)
+FindWinner(preferences, choice_names, 0.5)
