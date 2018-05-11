@@ -4,7 +4,6 @@ import csv
 import re
 import copy 
 import random
-
 import os
 import sys
 from contextlib import contextmanager
@@ -169,8 +168,11 @@ def silence_stdout():
         sys.stdout = old_target
 
 # Simulate running num_simulations times 
-num_simulations = 100
+num_simulations = 1000000
+print ""
+print "Re-running %s times (ties broken randomly)" % num_simulations 
 with silence_stdout():
     winners = [FindWinner(voting_results['preferences'], voting_results['original_names'], 0.5) for i in range(num_simulations)]
 
+print "Set of Winning names from %s simulations" % num_simulations
 print(set(winners))
